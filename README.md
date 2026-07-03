@@ -10,7 +10,11 @@
 -  Achieves R² score of ~0.998 on test data
 
  Installation
+
 bash
+
 git clone https://github.com/Uttej-0613/Datapulse-cli.git
+
 cd Datapulse-cli
+
 pip install -e .
