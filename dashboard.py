@@ -1,3 +1,5 @@
+import tempfile
+from pathlib import Path
 import streamlit as st
 import plotly.express as px
 import pandas as pd
@@ -15,17 +17,21 @@ with tab_data:
     upload = st.file_uploader("Upload a CSV dataset", type=["csv"])
     table = st.text_input("Table name (optional)")
     if upload and st.button("Profile and ingest"):
-        path = f"/tmp/datapulse_{upload.name.replace('/', '_')}"
-        with open(path, "wb") as f: f.write(upload.getvalue())
-        profile = profile_csv(path)
-        result = ingest_csv(path, table or None)
-        st.success(f"Loaded {result['rows']:,} rows into {result['table']}")
-        a,b,c = st.columns(3)
-        a.metric("Rows", f"{profile['rows']:,}")
-        b.metric("Columns", profile["columns"])
-        c.metric("Duplicate rows", profile["duplicate_rows"])
-        st.dataframe(pd.DataFrame(profile["column_profiles"]), use_container_width=True)
-        st.json(profile["numeric_summary"])
+        with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as temp:
+            temp.write(upload.getvalue())
+            path = Path(temp.name)
+        try:
+            profile = profile_csv(str(path))
+            result = ingest_csv(path, table or None)
+            st.success(f"Loaded {result['rows']:,} rows into {result['table']}")
+            a,b,c = st.columns(3)
+            a.metric("Rows", f"{profile['rows']:,}")
+            b.metric("Columns", profile["columns"])
+            c.metric("Duplicate rows", profile["duplicate_rows"])
+            st.dataframe(pd.DataFrame(profile["column_profiles"]), use_container_width=True)
+            st.json(profile["numeric_summary"])
+        finally:
+            path.unlink(missing_ok=True)
     st.subheader("Available tables")
     st.json(list_tables())
 with tab_sql:

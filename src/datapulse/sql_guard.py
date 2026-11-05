@@ -23,8 +23,8 @@ def validate_select(sql: str) -> str:
     tree = statements[0]
     if not isinstance(tree, (exp.Select, exp.Union, exp.Intersect, exp.Except)):
         raise UnsafeQuery("Only SELECT queries, including CTEs and set operations, are allowed.")
-    if tree.find(exp.Into) or tree.find(exp.Lock):
-        raise UnsafeQuery("SELECT INTO and locking clauses are not allowed.")
+    if tree.find(exp.Into):
+        raise UnsafeQuery("SELECT INTO is not allowed.")
     if not tree.args.get("limit"):
         tree = tree.limit(MAX_ROWS)
     return tree.sql(dialect="sqlite")
