@@ -42,7 +42,7 @@ def validate_select(sql: str) -> str:
         if function_name in {"load_extension", "readfile", "writefile", "fts3_tokenizer"}:
             raise UnsafeQuery("The query contains a prohibited SQLite function.")
     if not tree.args.get("limit"):
-        tree = tree.limit(MAX_ROWS)
+        tree = tree.limit(MAX_ROWS + 1)
     return tree.sql(dialect="sqlite")
 
 
