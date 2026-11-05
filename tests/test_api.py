@@ -18,7 +18,7 @@ def test_csv_upload_and_query(monkeypatch, tmp_path):
     monkeypatch.setattr(database, "DB_PATH", target)
     monkeypatch.setattr(sql_guard, "DB_PATH", target)
     with TestClient(app) as client:
-        response = client.post("/ingest", files={"file": ("people.csv", b"name,age\\nAda,36\\n", "text/csv")})
+        response = client.post("/ingest", files={"file": ("people.csv", b"name,age\nAda,36\n", "text/csv")})
         assert response.status_code == 200
         assert response.json()["rows"] == 1
         query = client.post("/query", json={"sql": "SELECT name, age FROM people"})
