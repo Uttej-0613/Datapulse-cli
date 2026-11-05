@@ -35,3 +35,9 @@ Generated SQL is never trusted. It must parse as one SELECT/CTE/UNION statement,
 NL-to-SQL accuracy depends on schema quality and the configured model. Business definitions absent from the data cannot be inferred reliably. SQLite is for local analytics, not high-concurrency production workloads. Review generated SQL and outputs before using them.
 
 Run tests with pytest.
+
+## Deployment security boundary
+
+For a protected API deployment, set `ENVIRONMENT=production` and configure a strong `DATAPULSE_API_KEY`. API routes other than `/health` require the `X-API-Key` header. Do not place the shared key in browser code. The Streamlit dashboard does not implement user authentication; keep it on a private network or put it behind a trusted identity-aware reverse proxy/SSO. Terminate TLS and add rate limiting at the proxy.
+
+This key is not user identity or tenant isolation. The app is local-first and its SQLite database is shared by the running instance. Do not expose it as a public multi-user analytics service until per-user authorization, tenant-scoped data separation, persistent managed storage/backups, secret management, monitoring/alerts, and deployment/rollback procedures are implemented and tested. SQLite is not intended for high-concurrency workloads.
