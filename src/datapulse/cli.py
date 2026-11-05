@@ -1,48 +1,35 @@
 import argparse
+import json
 import sys
-from pathlib import Path
-from .loaders import load_and_clean_csv
-from .trainer import train_model, predict_age
+from datapulse.database import ingest_csv, list_tables
+from datapulse.profiling import profile_csv
+from datapulse.validation import validate_csv
+from datapulse.sql_guard import execute_readonly
+from datapulse.nl2sql import ask
 
 def main():
-    parser = argparse.ArgumentParser(description="DataPulse - CSV Validator & Trainer")
-    parser.add_argument("filepath", help="Path to the CSV file")
-    parser.add_argument("--train", action="store_true", help="Train ML model after validation")
-    parser.add_argument("--predict", type=int, help="Predict salary for a given age (requires --train or existing model)")
+    parser = argparse.ArgumentParser(prog="datapulse", description="DataPulse data analytics and safe AI SQL")
+    sub = parser.add_subparsers(dest="command", required=True)
+    p = sub.add_parser("profile"); p.add_argument("file")
+    p = sub.add_parser("validate"); p.add_argument("file")
+    p = sub.add_parser("ingest"); p.add_argument("file"); p.add_argument("--table")
+    sub.add_parser("tables")
+    p = sub.add_parser("query"); p.add_argument("sql")
+    p = sub.add_parser("ask"); p.add_argument("question")
     args = parser.parse_args()
-    
     try:
-        # Step 1: Load and clean
-        clean_data = load_and_clean_csv(args.filepath)
-        
-        if args.train:
-            print("\n🚀 Training ML model...")
-            result = train_model(clean_data)
-            print(f"📈 R² Score: {result['r2_score']:.4f}")
-            print(f"📐 Formula: Salary = {result['slope']:.2f} * Age + {result['intercept']:.2f}")
-            print(f"💾 Model saved to: {result['model_path']}")
-            
-            if args.predict:
-                pred = predict_age(result['model'], args.predict)
-                print(f"🔮 Prediction for Age {args.predict}: ${pred:,.2f}")
-        
-        elif args.predict:
-            # Load existing model
-            import pickle
-            with open("salary_predictor.pkl", 'rb') as f:
-                model = pickle.load(f)
-            pred = predict_age(model, args.predict)
-            print(f"🔮 Prediction for Age {args.predict}: ${pred:,.2f}")
-        
-        else:
-            print("\n✅ Validation complete. Use --train to train a model.")
-    
-    except FileNotFoundError as e:
-        print(f"❌ Error: {e}")
-        sys.exit(1)
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        sys.exit(1)
+        if args.command == "profile": print(json.dumps(profile_csv(args.file), indent=2, default=str))
+        elif args.command == "validate":
+            r = validate_csv(args.file)
+            print(f"Rows: {r['total_rows']} | valid: {r['valid_rows']} | rejected: {r['rejected_rows']}")
+            if not r["rejected"].empty: print(r["rejected"].to_string(index=False))
+        elif args.command == "ingest": print(json.dumps(ingest_csv(args.file, args.table), indent=2))
+        elif args.command == "tables": print(json.dumps(list_tables(), indent=2))
+        elif args.command == "query": print(json.dumps(execute_readonly(args.sql), indent=2, default=str))
+        elif args.command == "ask": print(json.dumps(ask(args.question), indent=2, default=str))
+    except Exception as exc:
+        print(f"DataPulse error: {exc}", file=sys.stderr)
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     main()
